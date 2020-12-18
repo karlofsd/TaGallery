@@ -1,19 +1,26 @@
 const express = require('express')
 const morgan = require('morgan')
 const server = express()
-//const path = require('path')
-//const cors = require('cors')
+const cors = require('cors')
+const mongoose = require('mongoose')
 
-// server.use(cors({
-//     origin: "http://localhost:3000",
-//     methods: ["GET", "POST"],
-//     allowedHeaders: ["my-custom-header"],
-//     credentials: true
-// }))
+mongoose.connect('mongodb://localhost/tagallery',{
+    useNewUrlParser: true, 
+    useUnifiedTopology: true 
+})
+    .then(()=> console.log('db conected'))
+    .catch((err)=> console.log(err))
+
+/* server.use(cors({
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST","PUT","DELETE"],
+    allowedHeaders: ["content-type","application"],
+    credentials: true
+})) */
+
+server.use(cors())
 server.use(morgan('dev'))
 server.use(express.json())
-
-//server.use(express.static(path.join(__dirname,'public')))
 
 server.use('/',require('./routes'))
 

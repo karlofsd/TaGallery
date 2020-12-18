@@ -1,12 +1,7 @@
-// import io from 'socket.io-client'
+import io from 'socket.io-client'
 
-// const socket = io("http://localhost:3001",{
-//     withCredentials: true,
-//     extraHeaders: {
-//         "my-custom-header": "abcd"
-//     }
-// })
+const socket = io("//localhost:3001",{
+    withCredentials: true
+})
 
-// export default socket
-
-// ---- WEBSOCKETS NO IMPLEMENTADOS --------
+export default socket

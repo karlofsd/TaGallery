@@ -2,7 +2,7 @@ import './App.css';
 import {useState, useEffect} from 'react'
 import axios from 'axios'
 import ReactPaginate from 'react-paginate'
-//import socket from './socket'
+import socket from './socket'
 
 function App() {
   const [tags, setTags] = useState([])
@@ -15,7 +15,7 @@ function App() {
   const [loading,setLoading] = useState(false)
   const [pageOptions,setPageOptions] = useState({
     pages: '',
-    limit: 100
+    limit: 3
   })
 
   useEffect(() => {
@@ -25,14 +25,14 @@ function App() {
     console.log('render')
   },[])
 
-  // useEffect(()=>{
-  //   socket.on('tags:refresh',(data) => {
-  //     setTags(data)
-  //   })
+  useEffect(()=>{
+    socket.on('tags',_ => {
+      tagsPage()
+    })
 
-  //   return () => socket.off()
+    return () => socket.off()
     
-  // },[tags])
+  },[tags])
 
   const randomColor = () => {
     let rgb = []
@@ -47,44 +47,57 @@ function App() {
 
   const getTags = async() => {
     setLoading(true)
-    if(!localStorage.tags){
-      let {data} = await axios.get('https://random-word-api.herokuapp.com/word?number=100000')
-      localStorage.setItem('tags',JSON.stringify(data))
-      tagsPage(currentPage)
-      return console.log('DB cargada')
-    }
+    // if(!localStorage.tags){
+    //   let {data} = await axios.get('https://random-word-api.herokuapp.com/word?number=100000')
+    //   localStorage.setItem('tags',JSON.stringify(data))
+    //   tagsPage(currentPage)
+    //   return console.log('DB cargada')
+    // }
     tagsPage(currentPage)
     setLoading(false)
     return console.log('DB activa')
   }
 
-  const tagsPage = (page) => {
-    let db = JSON.parse(localStorage.getItem('tags'))
+  const tagsPage = async(page) => {
+    // ------ Local Storage version -------
+    // let db = JSON.parse(localStorage.getItem('tags'))
+    // setPageOptions({
+    //   ...pageOptions,
+    //   pages: db.length/pageOptions.limit
+    // })
+    // setTags(db.slice(page*pageOptions.limit,(page+1)*pageOptions.limit))
+    //- ------------------- -
+
+    const {data} = await axios.get(`http://localhost:3001/?page=${page}&limit=${pageOptions.limit}`)
+    console.log('etiquetas db', data)
     setPageOptions({
       ...pageOptions,
-      pages: db.length/pageOptions.limit
+      pages: Math.ceil(data.counter/pageOptions.limit)
     })
-    setTags(db.slice(page*pageOptions.limit,(page+1)*pageOptions.limit))
+    setTags(data.tags)
   }
 
-  const handlePageClick = async(e) => {
+  const handlePageClick = (e) => {
     setCurrentPage(e.selected)
-    console.log(e.selected)
     tagsPage(e.selected)
-    console.log('current', e.selected)
   }
 
-  const handleUpdate = (index) => {
+  const handleUpdate = async(id) => {
     if(!edit){
-      setInput({...input, id:index})
+      setInput({...input, id:id})
       return setEdit(!edit)
     }
     if(!input.edit){
       return setEdit(false)
     }
-    let db = JSON.parse(localStorage.getItem('tags'))
-    db.splice((currentPage*pageOptions.limit)+index, 1, input.edit)
-    localStorage.setItem('tags',JSON.stringify(db))
+    // ---- Local Storage vesion -----
+    // let db = JSON.parse(localStorage.getItem('tags'))
+    // db.splice((currentPage*pageOptions.limit)+index, 1, input.edit)
+    // localStorage.setItem('tags',JSON.stringify(db))
+    // -------------------------------
+
+    await axios.put(`/update/${id}`,{name:input.edit})
+    socket.emit('refresh')
     tagsPage(currentPage)
     setEdit(!edit)
     setInput({
@@ -93,10 +106,12 @@ function App() {
     })
   }
 
-  const handleDelete = async(index) => {
-    let db = JSON.parse(localStorage.getItem('tags'))
-    db.splice((currentPage*pageOptions.limit)+index,1)
-    await localStorage.setItem('tags',JSON.stringify(db))
+  const handleDelete = async(id) => {
+    // let db = JSON.parse(localStorage.getItem('tags'))
+    // db.splice((currentPage*pageOptions.limit)+index,1)
+    // await localStorage.setItem('tags',JSON.stringify(db))
+    await axios.delete(`http://localhost:3001/delete/${id}`)
+    socket.emit('refresh')
     tagsPage(currentPage)
   }
 
@@ -108,13 +123,19 @@ function App() {
   }
 
   const addTag = async() => {
-    let db = JSON.parse(localStorage.getItem('tags'))
-    db.unshift(input.add)
-    localStorage.setItem('tags',JSON.stringify(db))
+    // let db = JSON.parse(localStorage.getItem('tags'))
+    // db.unshift(input.add)
+    // localStorage.setItem('tags',JSON.stringify(db))
+    let body = {
+      name: input.add,
+      color: randomColor()
+    }
+    await axios.post('http://localhost:3001/create', body)
     setInput({
       add:'',
       edit:''
     })
+    socket.emit('refresh')
     tagsPage(currentPage)
   }
 
@@ -143,18 +164,18 @@ function App() {
                       {tags[0] && tags.map((tag,index)=> (
                         <tr style={{display:'flex',alignItems:'center',justifyContent:'space-between'}}>
                           <td> 
-                            <label style={{color:randomColor()}}>
+                            <label style={{color:tag.color}}>
                               <i className='material-icons tiny'>lens</i>
                             </label>
                           </td>
                           <td style={{color:'darkgray'}}>
-                            {edit && input.id === index ? <input type='text' name='edit' placeholder={tag} onChange={handleChange}/> : tag}
+                            {edit && input.id === tag._id ? <input type='text' name='edit' placeholder={tag.name} onChange={handleChange}/> : tag.name}
                           </td>
                           <td className='actions'>
-                            <button className='waves-effect btn waves-light' type='button' onClick={()=> handleUpdate(index)}>
-                              <i className='material-icons tiny'>{edit && input.id === index ? (input.edit ? 'save' : 'close'):'edit'}</i>
+                            <button className='waves-effect btn waves-light' type='button' onClick={()=> handleUpdate(tag._id)}>
+                              <i className='material-icons tiny'>{edit && input.id === tag._id ? (input.edit ? 'save' : 'close'):'edit'}</i>
                             </button>
-                            <button className='waves-effect btn waves-light' onClick={()=> handleDelete(index)}>
+                            <button className='waves-effect btn waves-light' onClick={()=> handleDelete(tag._id)}>
                               <i className='material-icons tiny'>delete</i>
                             </button>
                           </td>
