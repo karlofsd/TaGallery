@@ -18,6 +18,10 @@
 .pagination{
   margin-bottom: 0;
 }
+.pagination li {
+  cursor: pointer;
+  font-family: monospace;
+}
 
 .actions button{
   margin-right: 5px;

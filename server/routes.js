@@ -6,7 +6,7 @@ router.get('/', async(req,res) => {
     try{
         let {page,limit} = req.query
         const countTags = await Tags.countDocuments()
-        const tags = await Tags.find({},'name').skip(Number(page*limit)).limit(Number(limit)).sort({_id:'desc'})
+        const tags = await Tags.find({},'name color').skip(Number(page*limit)).limit(Number(limit)).sort({_id:'desc'})
         console.log(tags)
         res.status(200).json({counter: countTags, tags: tags})
     } catch(err){
@@ -17,6 +17,7 @@ router.get('/', async(req,res) => {
 router.post('/create',async(req,res) => {
     try{
         let body = req.body
+        console.log(body)
         const tag = new Tags(body)
         tag.save()
         res.status(201).send('Tag creada exitosamente')
