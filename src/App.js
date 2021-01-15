@@ -138,10 +138,18 @@ function App() {
 
   const switchAPItags = () => {
     if (api) {
+      setPageOptions({
+        ...pageOptions,
+        limit: 3
+      })
       setCurrentPage(0)
       return setApi(false);
       //return getTags()
     }
+    setPageOptions({
+      ...pageOptions,
+      limit: 10
+    })
     setApi(true);
     getTags(true);
   };
